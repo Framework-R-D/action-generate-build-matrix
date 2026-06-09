@@ -10,4 +10,4 @@ extracted into its own repository to allow reuse across other projects.
 
 The full commit history from the phlex monorepo has been preserved.
 
-See [Framework-R-D/phlex#<PR>](https://github.com/Framework-R-D/phlex/pull/<PR>) for the migration pull request.
+See [Framework-R-D/phlex#639](https://github.com/Framework-R-D/phlex/pull/639) for the migration pull request.
