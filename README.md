@@ -5,7 +5,7 @@
 ## Usage
 
 ```yaml
-- uses: Framework-R-D/action-generate-build-matrix@v1  # pin to commit SHA in production
+- uses: Framework-R-D/action-generate-build-matrix@a867325d7153f7fcc7d64fc69eafcb2b97edae39 # v1
   with:
     input-name: value
 ```
