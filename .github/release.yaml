@@ -1,0 +1,21 @@
+changelog:
+  categories:
+    - title: "Breaking Changes"
+      labels:
+        - breaking-change
+    - title: "New Features"
+      labels:
+        - enhancement
+    - title: "Bug Fixes"
+      labels:
+        - bug
+    - title: "Documentation"
+      labels:
+        - documentation
+    - title: "Maintenance"
+      labels:
+        - dependencies
+        - github_actions
+  exclude:
+    labels:
+      - skip-changelog

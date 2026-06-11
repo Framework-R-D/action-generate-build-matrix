@@ -1,0 +1,25 @@
+[tool.mypy]
+ignore_missing_imports = true
+no_implicit_optional = true
+show_error_codes = true
+warn_unreachable = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 99
+
+[tool.ruff.lint]
+select = ["B", "C4", "D", "E", "F", "I", "W"]
+ignore = ["E731", "E203"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.isort]
+known-first-party = ["generate_matrix"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.coverage.run]
+omit = ["tests/*"]

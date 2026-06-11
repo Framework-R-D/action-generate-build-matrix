@@ -1,0 +1,79 @@
+name: Python Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      ref: ${{ steps.setup.outputs.ref }}
+      repo: ${{ steps.setup.outputs.repo }}
+      checkout_path: ${{ steps.setup.outputs.checkout_path }}
+      has_changes: ${{ steps.setup.outputs.has_changes }}
+    steps:
+      - name: Workflow setup (Python relevance)
+        id: setup
+        uses: Framework-R-D/action-workflow-setup@f73307dd8c13cb66c2565c9ace32571517b1cea8
+        with:
+          file-type: python
+
+  python-check:
+    needs: setup
+    if: >
+      always() && needs.setup.result == 'success' && (
+        github.event_name != 'pull_request' ||
+        needs.setup.outputs.has_changes == 'true'
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ needs.setup.outputs.ref }}
+          path: ${{ needs.setup.outputs.checkout_path }}
+          repository: ${{ needs.setup.outputs.repo }}
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e
+      - run: uv tool install ruff && uv tool install mypy
+      - name: Run ruff check
+        working-directory: ${{ needs.setup.outputs.checkout_path }}
+        run: ruff check
+      - name: Run ruff format check
+        working-directory: ${{ needs.setup.outputs.checkout_path }}
+        run: ruff format --check
+      - name: Run mypy
+        working-directory: ${{ needs.setup.outputs.checkout_path }}
+        run: mypy .
+
+  python-test:
+    needs: setup
+    if: >
+      always() && needs.setup.result == 'success' && (
+        github.event_name != 'pull_request' ||
+        needs.setup.outputs.has_changes == 'true'
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ needs.setup.outputs.ref }}
+          path: ${{ needs.setup.outputs.checkout_path }}
+          repository: ${{ needs.setup.outputs.repo }}
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e
+      - name: Run tests with coverage
+        working-directory: ${{ needs.setup.outputs.checkout_path }}
+        run: |
+          uv run --with pytest --with pytest-cov \
+            pytest tests/ -v \
+            --cov=. \
+            --cov-report=term-missing \
+            --cov-fail-under=0

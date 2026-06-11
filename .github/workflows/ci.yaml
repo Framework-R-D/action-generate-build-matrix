@@ -1,0 +1,133 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+  security-events: write
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      ref: ${{ steps.setup.outputs.ref }}
+      repo: ${{ steps.setup.outputs.repo }}
+      base_sha: ${{ steps.setup.outputs.base_sha }}
+      checkout_path: ${{ steps.setup.outputs.checkout_path }}
+      has_changes_yaml: ${{ steps.setup.outputs.has_changes }}
+      has_changes_md: ${{ steps.detect_md.outputs.has_changes }}
+    steps:
+      - name: Workflow setup (YAML relevance)
+        id: setup
+        uses: Framework-R-D/action-workflow-setup@f73307dd8c13cb66c2565c9ace32571517b1cea8
+        with:
+          file-type: yaml
+
+      - name: Detect Markdown changes
+        id: detect_md
+        # Only meaningful for pull_request events, where base_sha is populated and
+        # a diff base exists. For push / workflow_dispatch the markdown-check job
+        # runs unconditionally (its github.event_name != 'pull_request' arm), so
+        # this detection step is skipped and its empty output is harmless.
+        if: github.event_name == 'pull_request' && steps.setup.outputs.is_act != 'true'
+        uses: Framework-R-D/action-run-change-detection@c70418d77a03191b165dd7dfebadbe00c77a03191b
+        with:
+          checkout-path: ${{ steps.setup.outputs.checkout_path }}
+          ref: ${{ steps.setup.outputs.ref }}
+          repo: ${{ steps.setup.outputs.repo }}
+          base-ref: ${{ steps.setup.outputs.base_sha }}
+          file-type: md
+
+  actionlint:
+    needs: setup
+    if: >
+      always() && needs.setup.result == 'success' && (
+        github.event_name != 'pull_request' ||
+        needs.setup.outputs.has_changes_yaml == 'true'
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ needs.setup.outputs.ref }}
+          path: ${{ needs.setup.outputs.checkout_path }}
+          repository: ${{ needs.setup.outputs.repo }}
+          persist-credentials: false
+      - uses: raven-actions/actionlint@205b530c5d9fa8f44ae9ed59f341a0db994aa6f8
+        with:
+          working-directory: ${{ needs.setup.outputs.checkout_path }}
+
+  yaml-check:
+    needs: setup
+    if: >
+      always() && needs.setup.result == 'success' && (
+        github.event_name != 'pull_request' ||
+        needs.setup.outputs.has_changes_yaml == 'true'
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ needs.setup.outputs.ref }}
+          path: ${{ needs.setup.outputs.checkout_path }}
+          repository: ${{ needs.setup.outputs.repo }}
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e
+      - name: Install yamllint
+        run: uv tool install yamllint
+      - name: Run yamllint
+        working-directory: ${{ needs.setup.outputs.checkout_path }}
+        run: yamllint .
+
+  markdown-check:
+    needs: setup
+    if: >
+      always() && needs.setup.result == 'success' && (
+        github.event_name != 'pull_request' ||
+        needs.setup.outputs.has_changes_md == 'true'
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ needs.setup.outputs.ref }}
+          path: ${{ needs.setup.outputs.checkout_path }}
+          repository: ${{ needs.setup.outputs.repo }}
+          persist-credentials: false
+      - uses: DavidAnson/markdownlint-cli2-action@992badcdf24e3b8eb7e87ff9287fe931bcb00c6e
+        with:
+          globs: |
+            ${{ needs.setup.outputs.checkout_path }}/**/*.md
+            !${{ needs.setup.outputs.checkout_path }}/**/CHANGELOG.md
+
+  codeql:
+    needs: setup
+    if: >
+      always() && needs.setup.result == 'success' && (
+        github.event_name != 'pull_request' ||
+        needs.setup.outputs.has_changes_yaml == 'true'
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          ref: ${{ needs.setup.outputs.ref }}
+          path: ${{ needs.setup.outputs.checkout_path }}
+          repository: ${{ needs.setup.outputs.repo }}
+          persist-credentials: false
+      - uses: github/codeql-action/init@dd903d2e4f5405488e5ef1422510ee31c8b32357
+        with:
+          languages: actions
+          build-mode: none
+          queries: security-extended
+          source-root: ${{ needs.setup.outputs.checkout_path }}
+      - uses: github/codeql-action/analyze@dd903d2e4f5405488e5ef1422510ee31c8b32357
+        with:
+          checkout_path: ${{ needs.setup.outputs.checkout_path }}
