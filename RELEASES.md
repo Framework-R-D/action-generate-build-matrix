@@ -112,6 +112,7 @@ gh release edit "${NEXT_VERSION}" --notes-file /tmp/release-notes.md \
 gh release view "${NEXT_VERSION}" --repo Framework-R-D/action-generate-build-matrix
 
 Confirm:
+
 - [ ] draft: false
 - [ ] prerelease: false
 - [ ] Release body contains the What's Changed list and no <PR> placeholders.
@@ -123,7 +124,9 @@ The README usage example should be pinned to the new version's commit SHA:
 
 NEW_SHA=$(gh api repos/Framework-R-D/action-generate-build-matrix/git/ref/tags/${NEXT_VERSION} \
   --jq .object.sha)
-# If the tag is annotated, dereference:
+
+# If the tag is annotated, dereference
+
 TYPE=$(gh api repos/Framework-R-D/action-generate-build-matrix/git/ref/tags/${NEXT_VERSION} \
   --jq .object.type)
 if [ "$TYPE" = "tag" ]; then
@@ -132,6 +135,7 @@ if [ "$TYPE" = "tag" ]; then
 fi
 
 # Update README.md
+
 OLD_PATTERN="Framework-R-D/action-generate-build-matrix@[0-9a-f]\{40\} # v[0-9]*"
 NEW_STRING="Framework-R-D/action-generate-build-matrix@${NEW_SHA} # ${NEXT_VERSION}"
 sed -i "s|${OLD_PATTERN}|${NEW_STRING}|" README.md

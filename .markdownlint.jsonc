@@ -8,9 +8,11 @@
   },
   "MD031": true,
   "MD032": true,
+  "MD033": false,
   "MD034": true,
   "MD036": {
     "punctuation": ",;:!?"
   },
-  "MD040": true
+  "MD040": true,
+  "MD060": false
 }

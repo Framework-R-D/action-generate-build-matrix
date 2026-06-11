@@ -14,6 +14,7 @@ extracted for standalone reuse.
   user-input:
 **Outputs:** (table: Name | Description)
   matrix:
+
 ## Repository Structure
 
 | Path | Purpose |
