@@ -72,4 +72,4 @@ jobs:
       - name: Run tests with coverage
         working-directory: ${{ needs.setup.outputs.checkout_path }}
         run: |
-          uv run --with pytest --with pytest-cov             pytest tests/ -v             --cov=.             --cov-report=term-missing             --cov-fail-under=0
+          uv run --with pytest --with pytest-cov             pytest tests/ -v             --cov=.             --cov-report=term-missing             --cov-fail-under=80
