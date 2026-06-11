@@ -61,7 +61,11 @@ jobs:
           persist-credentials: false
       - uses: raven-actions/actionlint@205b530c5d9fa8f44ae9ed59f341a0db994aa6f8 # v2
         with:
-          working-directory: ${{ needs.setup.outputs.checkout_path }}
+          # Pass explicit file globs so actionlint does not need to discover
+          # the project root from GITHUB_WORKSPACE (which doesn't contain
+          # .github/workflows/ when checkout used a path: subdirectory).
+          files: ${{ needs.setup.outputs.checkout_path }}/.github/workflows/*.yaml,${{ needs.setup.outputs.checkout_path }}/.github/workflows/*.yml
+          flags: -config-file ${{ needs.setup.outputs.checkout_path }}/.github/actionlint.yaml
 
   yaml-check:
     needs: setup

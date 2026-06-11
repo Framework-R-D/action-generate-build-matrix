@@ -1,3 +1,4 @@
 ignores:
   - CHANGELOG.md
   - RELEASES.md
+  - README.md
