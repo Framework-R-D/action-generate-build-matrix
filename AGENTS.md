@@ -14,8 +14,8 @@ extracted for standalone reuse.
 
 | Name | Description | Required | Default |
 | ---- | ----------- | -------- | ------- |
-| `user-input` | The user-provided build combinations from a workflow_dispatch event | False |  |
-| `comment-body` | The body of the issue comment that triggered the workflow | False |  |
+| `user-input` | The user-provided build combinations from a workflow_dispatch event | False | |
+| `comment-body` | The body of the issue comment that triggered the workflow | False | |
 
 **Outputs:**
 
