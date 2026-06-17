@@ -1,6 +1,8 @@
 [tool.mypy]
 ignore_missing_imports = true
 no_implicit_optional = true
+plugins = [
+]
 show_error_codes = true
 warn_unreachable = true
 
@@ -9,8 +11,21 @@ target-version = "py312"
 line-length = 99
 
 [tool.ruff.lint]
-select = ["B", "C4", "D", "E", "F", "I", "W"]
-ignore = ["E731", "E203"]
+select = [
+  "B",  # flake8-bugbear
+  "C4", # flake8-comprehensions
+  "D",  # pydocstyle
+  "E",  # pycodestyle errors
+  "F",  # pyflakes
+  "I",  # isort
+  "W",  # pycodestyle warnings
+]
+ignore = []
+extend-ignore = [
+    "E731", # do not assign a lambda expression, use a def
+    "E203", # whitespace before ':'
+]
+
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
