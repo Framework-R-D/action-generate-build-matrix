@@ -20,7 +20,7 @@ jobs:
         run: |
           # If the committer isn't 'GitHub', an admin pushed directly via local CLI.
           if [ "$COMMITTER" != "GitHub" ]; then
-            
+
             # Use jq to format a completely safe, escaped JSON object for Slack
             PAYLOAD=$(jq -n \
               --arg msg "$COMMIT_MSG" \
