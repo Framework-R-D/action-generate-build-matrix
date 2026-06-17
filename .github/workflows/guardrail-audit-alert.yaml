@@ -12,10 +12,21 @@ jobs:
       - name: Process and Format Slack Alert
         env:
           SLACK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          # Safely map variables as structured environment inputs
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          COMMITTER: ${{ github.event.head_commit.committer.name }}
+          REPO_NAME: ${{ github.repository }}
+          ACTOR: ${{ github.actor }}
         run: |
-          # GitHub sets the committer name to 'GitHub' for clean web-UI PR merges.
           # If the committer isn't 'GitHub', an admin pushed directly via local CLI.
-          if [ "${{ github.event.head_commit.committer.name }}" != "GitHub" ]; then
-            PAYLOAD='{"text": "⚠️ *Direct Push to Main Detected!*\n*Repo:* `'${{ github.repository }}'`\n*Actor:* `@'${{ github.actor }}'`\n*Commit:* `'${{ github.event.head_commit.message }}'`"}'
+          if [ "$COMMITTER" != "GitHub" ]; then
+            
+            # Use jq to format a completely safe, escaped JSON object for Slack
+            PAYLOAD=$(jq -n \
+              --arg msg "$COMMIT_MSG" \
+              --arg repo "$REPO_NAME" \
+              --arg actor "$ACTOR" \
+              '{"text": "⚠️ *Direct Push to Main Detected!*\n*Repo:* `\($repo)`\n*Actor:* `@\($actor)`\n*Commit:* `\($msg)`"}')
+
             curl -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$SLACK_URL"
           fi
