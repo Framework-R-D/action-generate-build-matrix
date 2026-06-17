@@ -31,7 +31,7 @@ jobs:
           if [ "${{ github.event_name }}" = "repository_ruleset" ]; then
             ACTION="${{ github.event.action }}"
             RULESET_NAME="${{ github.event.repository_ruleset.name }}"
-            
+
             PAYLOAD='{"text": "🚨 *Ruleset Safety Warning!*\n*Repo:* `'${{ github.repository }}'`\n*Actor:* `@'${{ github.actor }}'`\n*Event:* Ruleset *'${ACTION}'* (Target: `'${RULESET_NAME}'`)"}'
             curl -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$SLACK_URL"
           fi
