@@ -1,0 +1,37 @@
+name: Guardrail Audit Alerts
+on:
+  push:
+    branches: [main]
+  repository_ruleset:
+    types: [edited, deleted, bypassed]
+
+jobs:
+  slack-alert:
+    runs-on: ubuntu-latest
+    # Explicitly drop all default token permissions to zero for security isolation
+    permissions: {}
+    # Skip if the operation was performed cleanly by Dependabot
+    if: github.actor != 'dependabot[bot]'
+    steps:
+      - name: Process and Format Slack Alert
+        env:
+          SLACK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          # 1. Detect Direct Non-PR Push or Force-Pushes
+          if [ "${{ github.event_name }}" = "push" ]; then
+            # GitHub sets the committer name to 'GitHub' for clean web-UI PR merges.
+            # If the committer isn't 'GitHub', an admin pushed directly via local CLI.
+            if [ "${{ github.event.head_commit.committer.name }}" != "GitHub" ]; then
+              PAYLOAD='{"text": "⚠️ *Direct Push to Main Detected!*\n*Repo:* `'${{ github.repository }}'`\n*Actor:* `@'${{ github.actor }}'`\n*Commit:* `'${{ github.event.head_commit.message }}'`"}'
+              curl -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$SLACK_URL"
+            fi
+          fi
+
+          # 2. Detect Ruleset Configuration Modifications or Direct Bypasses
+          if [ "${{ github.event_name }}" = "repository_ruleset" ]; then
+            ACTION="${{ github.event.action }}"
+            RULESET_NAME="${{ github.event.repository_ruleset.name }}"
+            
+            PAYLOAD='{"text": "🚨 *Ruleset Safety Warning!*\n*Repo:* `'${{ github.repository }}'`\n*Actor:* `@'${{ github.actor }}'`\n*Event:* Ruleset *'${ACTION}'* (Target: `'${RULESET_NAME}'`)"}'
+            curl -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$SLACK_URL"
+          fi
