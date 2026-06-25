@@ -36,7 +36,7 @@ jobs:
         # runs unconditionally (its github.event_name != 'pull_request' arm), so
         # this detection step is skipped and its empty output is harmless.
         if: github.event_name == 'pull_request' && steps.setup.outputs.is_act != 'true'
-        uses: Framework-R-D/action-run-change-detection@c70418d77a03191b165dd7dfebadbe00c443566c # v1
+        uses: Framework-R-D/action-run-change-detection@047250bcbe1be9fb479c8f3ceeb85ac1084ede2e # v2
         with:
           checkout-path: ${{ steps.setup.outputs.checkout_path }}
           ref: ${{ steps.setup.outputs.ref }}
