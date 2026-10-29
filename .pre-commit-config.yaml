@@ -14,16 +14,41 @@ repos:
       - id: mixed-line-ending
   - repo: local
     hooks:
-      - id: scripts-unit-tests
-        name: scripts/ unit tests
-        entry: pytest scripts/test/ -v
-        language: python
-        additional_dependencies:
-          - pytest
-          - PyYAML
-        files: ^scripts/
+      - id: ruff-check
+        name: Ruff lint
+        entry: uv run --locked --group lint ruff check
+        language: system
+        types_or: [python, pyi]
+      - id: ruff-format
+        name: Ruff format
+        entry: uv run --locked --group lint ruff format
+        language: system
+        types_or: [python, pyi]
+      - id: mypy
+        name: mypy
+        entry: uv run --locked --group lint mypy .
+        language: system
+        files: ^(generate_matrix\.py|tests/)
         types_or: [python]
         pass_filenames: false
+      - id: unit-tests
+        name: Unit tests
+        entry: uv run --locked --group test pytest tests/ -v --cov=. --cov-report=term-missing --cov-fail-under=80
+        language: system
+        files: ^(generate_matrix\.py|tests/)
+        types_or: [python]
+        pass_filenames: false
+      - id: yamllint
+        name: yamllint
+        entry: uv run --locked --group lint yamllint
+        language: system
+        types: [yaml]
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+      - id: actionlint
+        entry: bash scripts/pre-commit/actionlint.sh
+        verbose: true
   - repo: https://github.com/google/go-jsonnet
     rev: v0.22.0
     hooks:
@@ -42,14 +67,3 @@ repos:
     hooks:
       - id: markdownlint-cli2
         args: [--fix]
-  - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.12
-    hooks:
-      - id: actionlint
-        entry: bash scripts/pre-commit/actionlint.sh
-        verbose: true
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.17
-    hooks:
-      - id: ruff-format
-        types_or: [python, pyi]
