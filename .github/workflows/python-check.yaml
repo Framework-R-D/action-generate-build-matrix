@@ -24,7 +24,11 @@ jobs:
         id: setup
         uses: Framework-R-D/action-workflow-setup@f73307dd8c13cb66c2565c9ace32571517b1cea8 # v1
         with:
-          file-type: python
+          include-globs: |
+            *.py
+            *.py.in
+            pyproject.toml
+            uv.lock
 
   python-check:
     needs: setup
@@ -42,16 +46,17 @@ jobs:
           repository: ${{ needs.setup.outputs.repo }}
           persist-credentials: false
       - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
-      - run: uv tool install ruff && uv tool install mypy
+        with:
+          python-version: "3.12"
       - name: Run ruff check
         working-directory: ${{ needs.setup.outputs.checkout_path }}
-        run: ruff check
+        run: uv run --locked --group lint ruff check
       - name: Run ruff format check
         working-directory: ${{ needs.setup.outputs.checkout_path }}
-        run: ruff format --check
+        run: uv run --locked --group lint ruff format --check
       - name: Run mypy
         working-directory: ${{ needs.setup.outputs.checkout_path }}
-        run: mypy .
+        run: uv run --locked --group lint mypy .
 
   python-test:
     needs: setup
@@ -69,7 +74,12 @@ jobs:
           repository: ${{ needs.setup.outputs.repo }}
           persist-credentials: false
       - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          python-version: "3.12"
       - name: Run tests with coverage
         working-directory: ${{ needs.setup.outputs.checkout_path }}
         run: |
-          uv run --with pytest --with pytest-cov             pytest tests/ -v             --cov=.             --cov-report=term-missing             --cov-fail-under=80
+          uv run --locked --group test pytest tests/ -v \
+            --cov=. \
+            --cov-report=term-missing \
+            --cov-fail-under=80
