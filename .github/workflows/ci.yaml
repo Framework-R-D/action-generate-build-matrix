@@ -95,6 +95,21 @@ jobs:
         working-directory: ${{ needs.setup.outputs.checkout_path }}
         run: uv run --locked --group lint yamllint .
 
+  guardrail-test:
+    needs: setup
+    if: always() && needs.setup.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.setup.outputs.ref }}
+          path: ${{ needs.setup.outputs.checkout_path }}
+          repository: ${{ needs.setup.outputs.repo }}
+          persist-credentials: false
+      - name: Test guardrail alert logic
+        working-directory: ${{ needs.setup.outputs.checkout_path }}
+        run: python3 -m unittest discover -s tests -p 'test_guardrail_audit_alert.py' -v
+
   markdown-check:
     needs: setup
     if: >
