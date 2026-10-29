@@ -61,6 +61,7 @@ jobs:
           persist-credentials: false
       - uses: raven-actions/actionlint@3d39aea434753780c3b3d4a1a31c854b4dbf49d7 # v2
         with:
+          version: "1.7.12"
           # Pass explicit file globs so actionlint does not need to discover
           # the project root from GITHUB_WORKSPACE (which doesn't contain
           # .github/workflows/ when checkout used a path: subdirectory).
