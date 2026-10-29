@@ -6,27 +6,46 @@ on:
 jobs:
   slack-alert:
     runs-on: ubuntu-latest
-    permissions: {} # Explicitly drops all token permissions
-    if: github.actor != 'dependabot[bot]'
+    permissions:
+      pull-requests: read
     steps:
       - name: Process and Format Slack Alert
+        shell: bash
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SLACK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           # Safely map variables as structured environment inputs
           COMMIT_MSG: ${{ github.event.head_commit.message }}
-          COMMITTER: ${{ github.event.head_commit.committer.name }}
+          PUSH_SHA: ${{ github.event.after }}
+          FORCED_PUSH: ${{ github.event.forced }}
           REPO_NAME: ${{ github.repository }}
           ACTOR: ${{ github.actor }}
         run: |
-          # If the committer isn't 'GitHub', an admin pushed directly via local CLI.
-          if [ "$COMMITTER" != "GitHub" ]; then
+          set -euo pipefail
 
-            # Use jq to format a completely safe, escaped JSON object for Slack
-            PAYLOAD=$(jq -n \
-              --arg msg "$COMMIT_MSG" \
-              --arg repo "$REPO_NAME" \
-              --arg actor "$ACTOR" \
-              '{"text": "⚠️ *Direct Push to Main Detected!*\n*Repo:* `\($repo)`\n*Actor:* `@\($actor)`\n*Commit:* `\($msg)`"}')
+          # Rebase merges can name the merging user as committer. Check the PR record instead.
+          # A force push restoring an old PR merge is still a direct branch update.
+          if [ "$FORCED_PUSH" != "true" ]; then
+            PR_PAGES=$(gh api --paginate --slurp "repos/${REPO_NAME}/commits/${PUSH_SHA}/pulls")
+            IS_PR_MERGE=$(jq -r --arg sha "$PUSH_SHA" --arg repo "$REPO_NAME" '
+              any(.[][];
+                .merged_at != null and .merge_commit_sha == $sha and
+                .base.ref == "main" and .base.repo.full_name == $repo
+              )
+            ' <<< "$PR_PAGES")
 
-            curl -X POST -H 'Content-type: application/json' --data "$PAYLOAD" "$SLACK_URL"
+            if [ "$IS_PR_MERGE" = "true" ]; then
+              echo "Push matches a merged PR into main; no alert needed."
+              exit 0
+            fi
           fi
+
+          PAYLOAD=$(jq -n \
+            --arg msg "$COMMIT_MSG" \
+            --arg repo "$REPO_NAME" \
+            --arg actor "$ACTOR" \
+            '{text: "⚠️ *Direct Push to Main Detected!*\n*Repo:* `\($repo)`\n*Actor:* `@\($actor)`\n*Commit:* `\($msg)`"}')
+
+          curl --fail-with-body --silent --show-error -X POST \
+            -H 'Content-type: application/json' --data "$PAYLOAD" \
+            "${SLACK_URL:?SLACK_WEBHOOK_URL is not configured}"
