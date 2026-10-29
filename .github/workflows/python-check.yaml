@@ -24,7 +24,11 @@ jobs:
         id: setup
         uses: Framework-R-D/action-workflow-setup@f73307dd8c13cb66c2565c9ace32571517b1cea8 # v1
         with:
-          file-type: python
+          include-globs: |
+            *.py
+            *.py.in
+            pyproject.toml
+            uv.lock
 
   python-check:
     needs: setup
