@@ -18,25 +18,41 @@ jobs:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
           PUSH_SHA: ${{ github.event.after }}
           FORCED_PUSH: ${{ github.event.forced }}
+          PUSHED_AT: ${{ github.event.repository.pushed_at }}
           REPO_NAME: ${{ github.repository }}
           ACTOR: ${{ github.actor }}
         run: |
           set -euo pipefail
+          : "${SLACK_URL:?SLACK_WEBHOOK_URL is not configured}"
 
           # Rebase merges can name the merging user as committer. Check the PR record instead.
-          # A force push restoring an old PR merge is still a direct branch update.
+          # Event time is stable across runner delays and reruns. The 60-second tolerance
+          # is best-effort correlation; an immediate rewind and restore can still match.
           if [ "$FORCED_PUSH" != "true" ]; then
-            PR_PAGES=$(gh api --paginate --slurp "repos/${REPO_NAME}/commits/${PUSH_SHA}/pulls")
-            IS_PR_MERGE=$(jq -r --arg sha "$PUSH_SHA" --arg repo "$REPO_NAME" '
-              any(.[][];
-                .merged_at != null and .merge_commit_sha == $sha and
-                .base.ref == "main" and .base.repo.full_name == $repo
-              )
-            ' <<< "$PR_PAGES")
+            if PUSH_TIME=$(jq -nr --arg time "$PUSHED_AT" '
+              $time | if test("^[0-9]+$") then tonumber else fromdateiso8601 end
+            '); then
+              PR_PAGES=$(gh api --paginate --slurp "repos/${REPO_NAME}/commits/${PUSH_SHA}/pulls")
+              IS_PR_MERGE=$(jq -r \
+                --arg sha "$PUSH_SHA" \
+                --arg repo "$REPO_NAME" \
+                --argjson push_time "$PUSH_TIME" '
+                any(.[][];
+                  .merged_at != null and .merge_commit_sha == $sha and
+                  .base.ref == "main" and .base.repo.full_name == $repo and
+                  (
+                    ($push_time - (.merged_at | fromdateiso8601)) as $delta |
+                    $delta >= -60 and $delta <= 60
+                  )
+                )
+              ' <<< "$PR_PAGES")
 
-            if [ "$IS_PR_MERGE" = "true" ]; then
-              echo "Push matches a merged PR into main; no alert needed."
-              exit 0
+              if [ "$IS_PR_MERGE" = "true" ]; then
+                echo "Push matches a recent merged PR into main; no alert needed."
+                exit 0
+              fi
+            else
+              echo "::warning::Push timestamp is missing or invalid; sending an alert instead of suppressing it."
             fi
           fi
 
@@ -46,6 +62,11 @@ jobs:
             --arg actor "$ACTOR" \
             '{text: "⚠️ *Direct Push to Main Detected!*\n*Repo:* `\($repo)`\n*Actor:* `@\($actor)`\n*Commit:* `\($msg)`"}')
 
-          curl --fail-with-body --silent --show-error -X POST \
+          SLACK_RESPONSE=$(curl --fail-with-body --silent --show-error -X POST \
             -H 'Content-type: application/json' --data "$PAYLOAD" \
-            "${SLACK_URL:?SLACK_WEBHOOK_URL is not configured}"
+            --write-out '\n%{http_code}' "$SLACK_URL")
+          SLACK_STATUS=${SLACK_RESPONSE##*$'\n'}
+          if [ "$SLACK_STATUS" != "200" ]; then
+            echo "::error::Slack webhook returned HTTP ${SLACK_STATUS}; expected HTTP 200."
+            exit 1
+          fi
