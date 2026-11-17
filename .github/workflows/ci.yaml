@@ -10,7 +10,6 @@ on:
 permissions:
   contents: read
   pull-requests: read
-  security-events: write
 
 jobs:
   setup:
@@ -87,13 +86,21 @@ jobs:
           path: ${{ needs.setup.outputs.checkout_path }}
           repository: ${{ needs.setup.outputs.repo }}
           persist-credentials: false
+      - name: Checkout trusted tooling manifests
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.workflow_sha }}
+          path: trusted-tooling
+          persist-credentials: false
       - name: Install uv
         uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           python-version: "3.12"
+          version-file: trusted-tooling/pyproject.toml
       - name: Run yamllint
         working-directory: ${{ needs.setup.outputs.checkout_path }}
-        run: uv run --locked --group lint yamllint .
+        run: uv run --project "$GITHUB_WORKSPACE/trusted-tooling" --locked --no-build --group lint yamllint .
 
   guardrail-test:
     needs: setup
@@ -106,9 +113,21 @@ jobs:
           path: ${{ needs.setup.outputs.checkout_path }}
           repository: ${{ needs.setup.outputs.repo }}
           persist-credentials: false
-      - name: Test guardrail alert logic
+      - name: Checkout trusted tooling manifests
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.workflow_sha }}
+          path: trusted-tooling
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          python-version: "3.12"
+          version-file: trusted-tooling/pyproject.toml
+      - name: Run action tests
         working-directory: ${{ needs.setup.outputs.checkout_path }}
-        run: python3 -m unittest discover -s tests -p 'test_guardrail_audit_alert.py' -v
+        run: uv run --project "$GITHUB_WORKSPACE/trusted-tooling" --locked --no-build --group test pytest tests/ -v
 
   markdown-check:
     needs: setup
@@ -133,6 +152,11 @@ jobs:
 
   codeql:
     needs: setup
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+      security-events: write
     if: >
       always() && needs.setup.result == 'success' && (
         github.event_name != 'pull_request' ||
