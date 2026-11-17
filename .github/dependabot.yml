@@ -9,6 +9,12 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "daily"
+    groups:
+      codeql:
+        applies-to: version-updates
+        patterns:
+          - "github/codeql-action"
+          - "github/codeql-action/*"
   - package-ecosystem: "uv"
     directory: "/"
     schedule:
